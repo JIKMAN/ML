@@ -1,0 +1,55 @@
+apiVersion: "kubeflow.org/v1beta1"
+kind: Experiment
+metadata:
+  namespace: practice
+  name: random-example
+spec:
+  objective:
+    type: maximize
+    goal: 0.99
+    objectiveMetricName: Validation-accuracy
+    additionalMetricNames:
+      - Train-accuracy
+  algorithm:
+    algorithmName: random
+  parallelTrialCount: 3
+  maxTrialCount: 12
+  maxFailedTrialCount: 3
+  parameters:
+    - name: learning_rate
+      parameterType: double
+      feasibleSpace:
+        min: "0.01"
+        max: "0.03"
+    - name: dropout_rate
+      parameterType: double
+      feasibleSpace:
+        min: "0.1"
+        max: "0.9"
+  trialTemplate:
+    primaryContainerName: training-container
+    trialParameters:
+      - name: learning_rate
+        description: Learning rate for the training model
+        reference: learning_rate
+      - name: dropout_rate
+        description: dropout_rate
+        reference: dropout_rate
+    trialSpec:
+      apiVersion: batch/v1
+      kind: Job
+      spec:
+        template:
+          metadata:
+            annotations:
+              sidecar.istio.io/inject: "false"
+          spec:
+            containers:
+              - name: training-container
+                image: ykkim77/fairing-job:38041ACE
+                command:
+                  - "python"
+                  - "/app/fmniest_e2e.py"
+                  - "--learning_rate=${trialParameters.learning_rate}"
+                  - "--dropout_rate=${trialParameters.dropout_rate}"
+            restartPolicy: Never
